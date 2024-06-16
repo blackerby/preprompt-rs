@@ -1,18 +1,18 @@
 use anyhow::{Context, Result};
-use clap::Parser;
 use arboard::Clipboard;
-#[cfg(target_os="linux")]
+#[cfg(target_os = "linux")]
 use arboard::SetExtLinux;
-#[cfg(target_os="linux")]
-use std::time::{Duration, Instant};
+use clap::Parser;
 use log::{info, warn};
 use mime_guess::from_path;
+use rayon::prelude::*;
 use simple_logger::SimpleLogger;
-use std::{fs,io};
 use std::io::Read;
 use std::path::{Path, PathBuf};
+#[cfg(target_os = "linux")]
+use std::time::{Duration, Instant};
+use std::{fs, io};
 use walkdir::WalkDir;
-use rayon::prelude::*;
 
 const DEFAULT_OUTPUT_FORMAT: &str = "markdown";
 
@@ -24,14 +24,13 @@ struct Cli {
     /// The path to the directory to traverse
     #[clap(help = "The file path for the directory to be processed")]
     path: PathBuf,
-    
+
     // TODO: Consider changing default log level for Linux
     // or suppressing warnings in an X11 environment
-    
     /// Log level for verbosity control
     #[clap(long, value_enum, default_value_t = Level::Warning)]
     log_level: Level,
-    
+
     /// The output format for the clipboard (markdown or plain)
     #[clap(short, long, default_value = DEFAULT_OUTPUT_FORMAT)]
     output_format: String,
@@ -39,7 +38,7 @@ struct Cli {
 
 fn main() -> Result<(), anyhow::Error> {
     let args = Cli::parse();
-    
+
     setup_logger(args.log_level)?;
 
     let directory_path = fs::canonicalize(&args.path)
@@ -56,14 +55,18 @@ fn main() -> Result<(), anyhow::Error> {
         .filter(|e| e.file_type().is_file() && is_text_file(e.path()))
         .collect();
 
-    let clipboard_content: String = entries.par_iter()
+    let clipboard_content: String = entries
+        .par_iter()
         .filter_map(|entry| {
             let file_path = entry.path();
             let relative_path = file_path.strip_prefix(&directory_path).ok()?;
             info!("Traversing file: {}", relative_path.display());
 
             let file_contents = read_file_to_string(file_path).ok()?;
-            let first_line = file_contents.lines().next().unwrap_or("File is empty or unreadable");
+            let first_line = file_contents
+                .lines()
+                .next()
+                .unwrap_or("File is empty or unreadable");
             let debug_line = &first_line[..first_line.len().min(100)];
 
             info!("First line of {}: {}", relative_path.display(), &debug_line);
@@ -77,12 +80,12 @@ fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-#[derive(clap::ValueEnum, Clone, Debug)]  
-enum Level {  
-   Debug,  
-   Info,  
-   Warning,  
-   Error,  
+#[derive(clap::ValueEnum, Clone, Debug)]
+enum Level {
+    Debug,
+    Info,
+    Warning,
+    Error,
 }
 
 // Conversion from custom Level to log::LevelFilter
@@ -118,18 +121,32 @@ fn is_text_file(file_path: &Path) -> bool {
 }
 
 // TODO: handle return value of `extension` more gracefully
-fn format_output<P: AsRef<Path>, S: AsRef<str>>(relative_path: P, contents: S, format: &str) -> Result<String> {
+fn format_output<P: AsRef<Path>, S: AsRef<str>>(
+    relative_path: P,
+    contents: S,
+    format: &str,
+) -> Result<String> {
     match format {
         "markdown" => Ok(format!(
             "### {}\n```{}\n{}\n```\n",
             relative_path.as_ref().display(),
-            relative_path.as_ref().extension().unwrap().to_str().unwrap(),
+            relative_path
+                .as_ref()
+                .extension()
+                .unwrap()
+                .to_str()
+                .unwrap(),
             contents.as_ref()
         )),
         "confluence" => Ok(format!(
             "h3. {}\n{{code:{}}}\n{}\n{{code}}\n",
             relative_path.as_ref().display(),
-            relative_path.as_ref().extension().unwrap().to_str().unwrap(),
+            relative_path
+                .as_ref()
+                .extension()
+                .unwrap()
+                .to_str()
+                .unwrap(),
             contents.as_ref()
         )),
         "plain" => Ok(format!(
@@ -145,11 +162,14 @@ fn format_output<P: AsRef<Path>, S: AsRef<str>>(relative_path: P, contents: S, f
 // https://github.com/1Password/arboard/issues/114
 fn copy_to_clipboard(content: &str) -> Result<()> {
     if cfg!(target_os = "linux") {
-        Clipboard::new()?.set()
-            .wait_until(Instant::now() + Duration::from_millis(500)).text(content)
+        Clipboard::new()?
+            .set()
+            .wait_until(Instant::now() + Duration::from_millis(500))
+            .text(content)
             .map_err(|e| anyhow::Error::msg(format!("Failed to copy contents to clipboard: {}", e)))
     } else {
-        Clipboard::new()?.set()
+        Clipboard::new()?
+            .set()
             .text(content)
             .map_err(|e| anyhow::Error::msg(format!("Failed to copy contents to clipboard: {}", e)))
     }
