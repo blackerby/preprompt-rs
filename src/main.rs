@@ -113,8 +113,15 @@ fn is_text_file(file_path: &Path) -> bool {
 fn format_output<P: AsRef<Path>, S: AsRef<str>>(relative_path: P, contents: S, format: &str) -> Result<String> {
     match format {
         "markdown" => Ok(format!(
-            "### {}\n```\n{}\n```\n",
+            "### {}\n```{}\n{}\n```\n",
             relative_path.as_ref().display(),
+            relative_path.as_ref().extension().unwrap().to_str().unwrap(),
+            contents.as_ref()
+        )),
+        "confluence" => Ok(format!(
+            "h3. {}\n{{code:{}}}\n{}\n{{code}}\n",
+            relative_path.as_ref().display(),
+            relative_path.as_ref().extension().unwrap().to_str().unwrap(),
             contents.as_ref()
         )),
         "plain" => Ok(format!(
