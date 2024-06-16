@@ -117,6 +117,7 @@ fn is_text_file(file_path: &Path) -> bool {
         .map_or(false, |mime| mime.type_() == "text")
 }
 
+// TODO: handle return value of `extension` more gracefully
 fn format_output<P: AsRef<Path>, S: AsRef<str>>(relative_path: P, contents: S, format: &str) -> Result<String> {
     match format {
         "markdown" => Ok(format!(
