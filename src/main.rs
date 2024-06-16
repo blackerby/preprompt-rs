@@ -1,7 +1,9 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use arboard::Clipboard;
+#[cfg(target_os="linux")]
 use arboard::SetExtLinux;
+#[cfg(target_os="linux")]
 use std::time::{Duration, Instant};
 use log::{info, warn};
 use mime_guess::from_path;
@@ -138,7 +140,13 @@ fn format_output<P: AsRef<Path>, S: AsRef<str>>(relative_path: P, contents: S, f
 // Got this to work based on this comment:
 // https://github.com/1Password/arboard/issues/114
 fn copy_to_clipboard(content: &str) -> Result<()> {
-    Clipboard::new()?.set()
-        .wait_until(Instant::now() + Duration::from_secs(1)).text(content)
-        .map_err(|e| anyhow::Error::msg(format!("Failed to copy contents to clipboard: {}", e)))
+    if cfg!(target_os = "linux") {
+        Clipboard::new()?.set()
+            .wait_until(Instant::now() + Duration::from_secs(1)).text(content)
+            .map_err(|e| anyhow::Error::msg(format!("Failed to copy contents to clipboard: {}", e)))
+    } else {
+        Clipboard::new()?.set()
+            .text(content)
+            .map_err(|e| anyhow::Error::msg(format!("Failed to copy contents to clipboard: {}", e)))
+    }
 }
