@@ -68,7 +68,6 @@ fn main() -> Result<(), anyhow::Error> {
         .collect();
 
     copy_to_clipboard(&clipboard_content)?;
-    std::thread::sleep(Duration::from_secs(1));
 
     Ok(())
 }
@@ -139,6 +138,7 @@ fn format_output<P: AsRef<Path>, S: AsRef<str>>(relative_path: P, contents: S, f
 // Got this to work based on this comment:
 // https://github.com/1Password/arboard/issues/114
 fn copy_to_clipboard(content: &str) -> Result<()> {
-    Clipboard::new()?.set().wait_until(Instant::now() + Duration::from_secs(1)).text(content)
+    Clipboard::new()?.set()
+        .wait_until(Instant::now() + Duration::from_secs(1)).text(content)
         .map_err(|e| anyhow::Error::msg(format!("Failed to copy contents to clipboard: {}", e)))
 }
