@@ -25,6 +25,9 @@ struct Cli {
     #[clap(help = "The file path for the directory to be processed")]
     path: PathBuf,
     
+    // TODO: Consider changing default log level for Linux
+    // or suppressing warnings in an X11 environment
+    
     /// Log level for verbosity control
     #[clap(long, value_enum, default_value_t = Level::Warning)]
     log_level: Level,
@@ -142,7 +145,7 @@ fn format_output<P: AsRef<Path>, S: AsRef<str>>(relative_path: P, contents: S, f
 fn copy_to_clipboard(content: &str) -> Result<()> {
     if cfg!(target_os = "linux") {
         Clipboard::new()?.set()
-            .wait_until(Instant::now() + Duration::from_secs(1)).text(content)
+            .wait_until(Instant::now() + Duration::from_millis(500)).text(content)
             .map_err(|e| anyhow::Error::msg(format!("Failed to copy contents to clipboard: {}", e)))
     } else {
         Clipboard::new()?.set()
