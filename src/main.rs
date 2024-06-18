@@ -1,7 +1,5 @@
 use anyhow::{Context, Result};
 use arboard::Clipboard;
-#[cfg(target_os = "linux")]
-use arboard::SetExtLinux;
 use clap::Parser;
 use log::{info, warn};
 use mime_guess::from_path;
@@ -9,8 +7,6 @@ use rayon::prelude::*;
 use simple_logger::SimpleLogger;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-#[cfg(target_os = "linux")]
-use std::time::{Duration, Instant};
 use std::{fs, io};
 use walkdir::WalkDir;
 
@@ -75,8 +71,11 @@ fn main() -> Result<(), anyhow::Error> {
         })
         .collect();
 
-    copy_to_clipboard(&clipboard_content)?;
-
+    if cfg!(target_os = "linux") {
+        println!("{}", clipboard_content);
+    } else {
+        copy_to_clipboard(&clipboard_content)?;
+    }
     Ok(())
 }
 
@@ -158,19 +157,9 @@ fn format_output<P: AsRef<Path>, S: AsRef<str>>(
     }
 }
 
-// Got this to work based on this comment:
-// https://github.com/1Password/arboard/issues/114
 fn copy_to_clipboard(content: &str) -> Result<()> {
-    if cfg!(target_os = "linux") {
-        Clipboard::new()?
-            .set()
-            .wait_until(Instant::now() + Duration::from_millis(500))
-            .text(content)
-            .map_err(|e| anyhow::Error::msg(format!("Failed to copy contents to clipboard: {}", e)))
-    } else {
-        Clipboard::new()?
-            .set()
-            .text(content)
-            .map_err(|e| anyhow::Error::msg(format!("Failed to copy contents to clipboard: {}", e)))
-    }
+    Clipboard::new()?
+        .set_text(content)
+        .map_err(|e| anyhow::Error::msg(format!("Failed to copy contents to clipboard: {}", e)))?;
+    Ok(())
 }
